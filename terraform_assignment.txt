@@ -1,0 +1,89 @@
+Assignment: Use Terraform’s local provider to create two files:
+1)	student_info.txt → should contain your name, course, and current date.
+2)	config.json → should contain fixed JSON data (project, status, version).
+Bonus: Use random provider to generate a nickname and add it inside student_info.txt.
+Solution : 
+Required Providers
+•	local - for creating files
+•	random - for generating random nicknames
+•	time - for getting current date
+>> Under the “required_providers” block , the source and version of the provider is added
+main.tf 
+#____________________________________________________________________
+# Terraform configuration
+terraform {
+  required_providers {
+    local = {
+      source = "hashicorp/local"
+      version = "2.4.0"
+    }
+    random = {
+      source = "hashicorp/random"
+      version = "3.5.1"
+    }
+    time = {
+      source = "hashicorp/time"
+      version = "0.9.1"
+    }
+  }
+}
+### Here the resource “random_pet” is called. 
+We can use other resources like random_string / random_byte etc , but those would not provide a meanigful name as a word. 
+‘length’ can be any number from 1 and defines the number of words the random name is required of. 
+‘seperator’ is an optional variable. By default ‘-’ is considered and is used as the seperator of the random name words generated.
+resource "random_pet" "student_nickname" {
+  length = 3
+}
+# Get current timestamp
+resource "time_static" "current_time" {}
+# Create student_info.txt file
+#time_static.current_time.rfc3339  - RFC3339 is a standard format that looks like: 
+#2024-01-15T14:30:45Z
+#│     │   │ │     │ └── Z = UTC timezone (Greenwich Mean Time)
+#│     │   │ │     └──── 45 seconds  
+#│     │   │ └────────── 30 minutes
+#│     │   └──────────── 14 hours (2 PM)
+#│     └──────────────── 15th day
+#└────────────────────── January 2024
+resource "local_file" "student_info" {
+  filename = "student_info.txt"
+  content = <<-EOT
+Name: Rajesh Bhaskaran
+Course: Terraform Assignment
+Current Date: ${time_static.current_time.rfc3339}
+Nickname: ${random_pet.student_nickname.id}
+  EOT
+}
+# Create config.json file
+resource "local_file" "config_json" {
+  filename = "config.json"
+  content = jsonencode({
+    project = "Terraform Assignment"
+    status  = "completed"
+    version = "1.0.0"
+    created = time_static.current_time.rfc3339
+  })
+}
+
+# Output the generated values
+output "generated_nickname" {
+  value = random_pet.student_nickname.id
+  description = "The randomly generated nickname"
+}
+
+output "current_timestamp" {
+  value = time_static.current_time.rfc3339
+  description = "The current timestamp"
+}
+output "files_created" {
+  value = [
+    local_file.student_info.filename,
+    local_file.config_json.filename
+  ]
+  description = "List of files created"
+}
+#____________________________________________________________________
+#Snapshot of the code tried in Visual Studio Code 
+terraform init
+terraform plan   
+terraform apply
